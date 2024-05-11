@@ -1,6 +1,6 @@
 'use-client'
 
-import Heading from "@/app/components/products/Heading";
+import Heading from "@/app/components/Heading";
 import { Avatar, Rating } from "@mui/material";
 import moment from "moment";
 
