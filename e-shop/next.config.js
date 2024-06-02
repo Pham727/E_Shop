@@ -1,7 +1,20 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     images: {
-        domains: ["m.media-amazon.com"],
+        remotePatterns: [
+            {
+              protocol: "https",
+              hostname: "*.googleusercontent.com",
+              port: "",
+              pathname: "**",
+            },
+            {
+                protocol: "https",
+                hostname: "*.media-amazon.com",
+                port: "",
+                pathname: "**",
+            },
+          ],
     }
 }
 
