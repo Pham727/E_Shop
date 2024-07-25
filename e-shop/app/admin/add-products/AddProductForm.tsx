@@ -6,10 +6,15 @@ import CustomCheckBox from "@/app/components/inputs/CustomCheckBox";
 import CategoryInput from "@/app/components/inputs/CategoryInput";
 import SelectColor from "@/app/components/inputs/SelectColor";
 import Button from "@/app/components/Button";
+import toast from "react-hot-toast";
+import firebaseApp from "@/libs/firebase";
+import axios from "axios";
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { FieldValues, useForm} from "react-hook-form";
 import { categories } from "@/app/utils/categories";
 import { colors } from "@/app/utils/colors";
+import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 
 export type ImageType = {
     color: string;
@@ -24,7 +29,7 @@ export type UploadedImageType = {
 }
 
 const AddProductForm = () => {
-
+    const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
     const [images, setImages] = useState<ImageType[] | null>();
     const [isProductCreated, setIsProductCreated]  = useState(false);
@@ -54,14 +59,106 @@ const AddProductForm = () => {
     useEffect(() => {
         if(isProductCreated){
             reset();
-            setImage(null);
+            setImages(null);
             setIsProductCreated(false);
         }
     }, [isProductCreated]);
 
     const onSubmit: SubmitHandler<FieldValues> = async (data) =>{
-        console.log("Product data", data);
+        //console.log("Product data", data);
+        // Upload imgaes to firebase
+        setIsLoading(true);
+        let uploadedImages: UploadedImageType[] =[];
+        if (!data.category) {
+            setIsLoading(false);
+            return toast.error("Category is not selected");
+        }
+
+        if (!data.images || data.length ===0) {
+            return toast.error("NO selected images");
+        }
+
+        const handleImageUploads = async () =>{
+            toast("Creating product, please wait...")
+            try {
+                for (const item of data.images) {
+                    if (item.image) {
+                        const fileName = new Date().getTime() + "-" + item.image.name;
+                        const storage = getStorage(firebaseApp);
+                        const storageRef = ref(storage,`products/${fileName}`);
+
+                        // Upload the file and metadata
+                        const uploadTask = uploadBytesResumable(storageRef, item.image);
+                        
+                        await new Promise<void> ((resolve, reject) => {
+                            uploadTask.on('state_changed', 
+                                (snapshot) => {
+                                  // Observe state change events such as progress, pause, and resume
+                                  // Get task progress, including the number of bytes uploaded and the total number of bytes to be uploaded
+                                  const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                                  console.log('Upload is ' + progress + '% done');
+                                  switch (snapshot.state) {
+                                    case 'paused':
+                                      console.log('Upload is paused');
+                                      break;
+                                    case 'running':
+                                      console.log('Upload is running');
+                                      break;
+                                  }
+                                }, 
+                                (error) => {
+                                  // Handle unsuccessful uploads
+                                  console.log('Error uploading image', error);
+                                  reject(error);
+                                  
+                                }, 
+                                () => {
+                                  // Handle successful uploads on complete
+                                  // For instance, get the download URL: https://firebasestorage.googleapis.com/...
+                                  getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+                                    uploadedImages.push({
+                                        ...item,
+                                        image: downloadURL,
+                                    })
+                                    console.log('File available at', downloadURL);
+                                    resolve();
+                                  })
+                                  .catch((error) => {
+                                    console.log('Error getting the download URL', error);
+                                    reject(error);
+                                    
+                                  });
+                                }
+                              );
+                        })
+                    }
+                }
+            } catch (error) {
+                setIsLoading(false);
+                console.log("Error handing image uploads", error);
+                return toast.error("Error handing image uploads");
+                
+            }
+        }
+
+        // upload image to firebase storage
+        await handleImageUploads();
+        // save product into data
+        const productData =  {...data, images: uploadedImages}
+        axios.post('/api/product', productData).then(()=>{
+            toast.success('Product created');
+            setIsProductCreated(true);
+            router.refresh();
+        })
+        .catch((error) => {
+            console.log("Error: ", error);
+            toast.error("Something went wrong when saving product to db")
+        })
+        .finally(() => {
+            setIsLoading(false);
+        })     
     }
+
     const category = watch("category");
 
     const setCustomValue = (id: string, value: any) => {
