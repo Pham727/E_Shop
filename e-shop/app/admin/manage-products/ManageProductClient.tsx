@@ -66,7 +66,7 @@ const ManageProductClient: React.FC<ManageProductClientProps> = ({products}) => 
                 </div>
             )
         }},
-        {field: "actioon", headerName: "Actions", width: 200, renderCell: (params) =>{
+        {field: "action", headerName: "Actions", width: 200, renderCell: (params) =>{
             return(
                 <div className ="flex justify-between mt-2 gap-4 w-full">
                     <ActionBtn 
