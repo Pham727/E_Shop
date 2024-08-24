@@ -3,13 +3,15 @@ import Container from "../Container";
 import { Redressed } from "next/font/google";
 import CartCount from "./CartCount";
 import UserMenu from "./UserMenu";
+import Categories from "./Categories";
 import { getCurrentUser } from "@/actions/getCurrentUser";
 
 const redressed = Redressed({subsets:['latin'], weight:['400']})
 
 const NavBar = async () =>{
+
     const currentUser = await getCurrentUser();
-    
+
     return <div
     className="
     sticky
@@ -42,6 +44,7 @@ const NavBar = async () =>{
                 </div>
             </Container>
         </div>
+        <Categories/>
     </div>;
 };
 
